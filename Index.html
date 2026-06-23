@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RX Parking Secure Gateway</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Prompt -->
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- LINE LIFF SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Prompt', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white min-h-screen flex items-center justify-center p-4 antialiased font-sans">
+
+  <!-- MAIN GATEWAY PANEL -->
+  <div class="w-full max-w-sm glass-effect rounded-3xl p-8 shadow-2xl text-center relative overflow-hidden">
+    
+    <!-- Decorative Glowing Lights -->
+    <div class="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl"></div>
+
+    <!-- Animated Status Loader Icon -->
+    <div class="relative z-10 mb-6 inline-flex items-center justify-center">
+      <div class="w-20 h-20 rounded-full border-4 border-slate-800 flex items-center justify-center">
+        <i class="fa-solid fa-shield-halved text-blue-400 text-3xl animate-pulse"></i>
+      </div>
+      <!-- Spinner Ring -->
+      <div class="absolute inset-0 w-20 h-20 border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Message State -->
+    <div class="relative z-10 space-y-3">
+      <h2 class="text-xl font-bold tracking-tight text-white" id="gatewayTitle">กำลังตรวจสอบสิทธิ์ผ่าน LINE</h2>
+      <p class="text-slate-400 text-xs leading-relaxed" id="gatewaySub">ระบบกำลังยืนยันตัวตนของคุณอย่างปลอดภัยด้วยเทคโนโลยี LINE LIFF 5.0...</p>
+    </div>
+
+    <!-- Error state action button (Hidden by default) -->
+    <div id="actionArea" class="hidden relative z-10 mt-6">
+      <button onclick="window.location.reload()" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 transition-all py-3 px-4 rounded-xl text-xs font-semibold shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
+        <i class="fa-solid fa-arrows-rotate"></i> ลองใหม่อีกครั้ง
+      </button>
+    </div>
+
+    <!-- Company Branding Label -->
+    <div class="relative z-10 mt-8 border-t border-white/5 pt-4 text-[10px] text-slate-500">
+      RX Overnight Parking Authentication Gateway
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // ⚙️ CONFIGURATION - โปรดระบุค่าติดตั้งของคุณตรงนี้
+    // ==========================================
+    const LIFF_ID = "YOUR_LIFF_ID"; // ใส่รหัส LIFF ID ของคุณ (เช่น "2006325984-Z5exl4Yp")
+    const GAS_WEB_APP_URL = "YOUR_GAS_WEB_APP_URL"; // ใส่ลิงก์ Web App หลักของ Google Apps Script
+    // ==========================================
+
+    document.addEventListener("DOMContentLoaded", function() {
+      // ตรวจสอบความถูกต้องของการใส่ตัวแปรตั้งต้น
+      if (LIFF_ID === "YOUR_LIFF_ID" || GAS_WEB_APP_URL === "YOUR_GAS_WEB_APP_URL") {
+        showError("ยังไม่ได้ตั้งค่าเชื่อมโยงระบบ", "กรุณาแก้ไขไฟล์ redirect.html เพื่อระบุค่ารหัส LIFF ID และลิงก์ Web App ของ Google Apps Script ก่อนเริ่มต้นใช้งาน");
+        return;
+      }
+      initializeLiff();
+    });
+
+    /**
+     * ดำเนินการเริ่มทำงาน LINE LIFF SDK นอก Iframe
+     */
+    function initializeLiff() {
+      liff.init({ liffId: LIFF_ID })
+        .then(() => {
+          if (!liff.isLoggedIn()) {
+            // หากยังไม่ได้ Login ในเครื่อง/ห้องแชทนั้นๆ ให้ทำ Login ทันที
+            liff.login();
+          } else {
+            // ดึงโปรไฟล์ LINE ทราบผลใน 0.1 วินาที
+            liff.getProfile()
+              .then(profile => {
+                const lineUserId = profile.userId;
+                
+                // ตรวจหาค่าพารามิเตอร์ส่งต่ออื่นๆ เช่น page=admin
+                const urlParams = new URLSearchParams(window.location.search);
+                const page = urlParams.get('page') || '';
+                
+                // สรุปลิงก์สำหรับการ Redirect ไปยังหน้า Google Apps Script หลัก
+                let redirectUrl = GAS_WEB_APP_URL;
+                const separator = redirectUrl.includes('?') ? '&' : '?';
+                
+                redirectUrl += `${separator}lineUserId=${encodeURIComponent(lineUserId)}`;
+                
+                if (page) {
+                  redirectUrl += `&page=${encodeURIComponent(page)}`;
+                }
+
+                // สั่งการสลับหน้าเว็บอย่างลื่นไหล
+                document.getElementById('gatewayTitle').textContent = "ยืนยันตัวตนสำเร็จ";
+                document.getElementById('gatewaySub').textContent = "ระบบกำลังนำทางคุณเข้าสู่หน้าเขียนแบบฟอร์มขอจอดรถ...";
+                
+                setTimeout(() => {
+                  window.location.replace(redirectUrl);
+                }, 150);
+              })
+              .catch(err => {
+                showError("ดึงข้อมูลโปรไฟล์ LINE ไม่สำเร็จ", err.message);
+              });
+          }
+        })
+        .catch(err => {
+          showError("โหลดระบบ LINE LIFF ล้มเหลว", "กรุณาตรวจสอบว่าคุณเปิดใช้งานสิทธิ์การระบุโปรไฟล์ใน LINE Developers Console และระบุรหัส LIFF ID ถูกต้องแล้ว (" + err.message + ")");
+        });
+    }
+
+    /**
+     * แสดงสถานะการทำงานขัดข้องบนหน้าจอผู้ใช้งาน
+     */
+    function showError(title, message) {
+      document.getElementById('gatewayTitle').textContent = title;
+      document.getElementById('gatewayTitle').className = "text-xl font-bold tracking-tight text-red-400";
+      document.getElementById('gatewaySub').textContent = message;
+      document.getElementById('actionArea').classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
