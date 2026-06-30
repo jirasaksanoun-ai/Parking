@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>RX Parking</title>
+  <title>RX Parking Secure Gateway</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -54,7 +54,7 @@
     <!-- Message State -->
     <div class="relative z-10 space-y-3">
       <h2 class="text-xl font-bold tracking-tight text-white" id="gatewayTitle">กำลังตรวจสอบสิทธิ์ผ่าน LINE</h2>
-      <p class="text-slate-400 text-xs leading-relaxed" id="gatewaySub">ระบบกำลังยืนยันตัวตนของคุณผ่าน LINE LIFF</p>
+      <p class="text-slate-400 text-xs leading-relaxed" id="gatewaySub">ระบบกำลังยืนยันตัวตนของคุณอย่างปลอดภัยด้วยเทคโนโลยี LINE LIFF 5.0...</p>
     </div>
 
     <!-- Error state action button (Hidden by default) -->
@@ -66,7 +66,7 @@
 
     <!-- Company Branding Label -->
     <div class="relative z-10 mt-8 border-t border-white/5 pt-4 text-[10px] text-slate-500">
-      RX Parking
+      RX Overnight Parking Authentication Gateway
     </div>
   </div>
 
@@ -75,7 +75,7 @@
     // ⚙️ CONFIGURATION - โปรดระบุค่าติดตั้งของคุณตรงนี้
     // ==========================================
     const LIFF_ID = "2009669941-LOE8u4F6"; // ใส่รหัส LIFF ID ของคุณ (เช่น "2006325984-Z5exl4Yp")
-    const GAS_WEB_APP_URL = "https://script.google.com/a/macros/rx.co.th/s/AKfycbyBAX4cZdACvxu0pozjLs4AhVKzZhgi5o82jhoRYzqUMKwMboUy1Plz8MC0hPt9fu20/exec"; // ใส่ลิงก์ Web App หลักของ Google Apps Script
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyBAX4cZdACvxu0pozjLs4AhVKzZhgi5o82jhoRYzqUMKwMboUy1Plz8MC0hPt9fu20/exec"; // ใส่ลิงก์ Web App หลักของ Google Apps Script
     // ==========================================
 
     document.addEventListener("DOMContentLoaded", function() {
@@ -102,19 +102,20 @@
               .then(profile => {
                 const lineUserId = profile.userId;
                 
-                // ตรวจหาค่าพารามิเตอร์ส่งต่ออื่นๆ เช่น page=admin
-                const urlParams = new URLSearchParams(window.location.search);
-                const page = urlParams.get('page') || '';
-                
                 // สรุปลิงก์สำหรับการ Redirect ไปยังหน้า Google Apps Script หลัก
                 let redirectUrl = GAS_WEB_APP_URL;
                 const separator = redirectUrl.includes('?') ? '&' : '?';
                 
                 redirectUrl += `${separator}lineUserId=${encodeURIComponent(lineUserId)}`;
                 
-                if (page) {
-                  redirectUrl += `&page=${encodeURIComponent(page)}`;
-                }
+                // ✅ ดึงพารามิเตอร์ทั้งหมดที่แนบมากับลิงก์ LIFF (เช่น page, adminId) ส่งต่อไปยัง GAS อย่างครบถ้วน
+                const urlParams = new URLSearchParams(window.location.search);
+                urlParams.forEach((value, key) => {
+                  // ป้องกันการส่งพารามิเตอร์ภายในของระบบซ้ำซ้อน
+                  if (key !== 'lineUserId' && key !== 'liff.state') { 
+                    redirectUrl += `&${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+                  }
+                });
 
                 // สั่งการสลับหน้าเว็บอย่างลื่นไหล
                 document.getElementById('gatewayTitle').textContent = "ยืนยันตัวตนสำเร็จ";
